@@ -29,9 +29,7 @@ Each lesson answers **one question** in plain English:
 
 ---
 
-## 3-Week Plan
-
-### Week 1 — Understanding the Web
+### Understanding the Web
 | # | Lesson |
 |---|--------|
 | 01 | [What is the Internet?](lessons/01-what-is-the-internet.md) |
@@ -60,7 +58,7 @@ Each lesson answers **one question** in plain English:
 | 24 | [What is In-Memory Storage?](lessons/24-what-is-in-memory-storage.md) |
 | 25 | [Frontend + Backend — The Full Picture](lessons/25-frontend-backend-full-picture.md) |
 
-### Week 2 — Understanding the Tools
+### Understanding the Tools
 | # | Lesson |
 |---|--------|
 | 26 | [What is HTTP vs WebSocket?](lessons/26-what-is-http-vs-websocket.md) |
@@ -89,7 +87,7 @@ Each lesson answers **one question** in plain English:
 | 49 | [What is a Dependency?](lessons/49-what-is-a-dependency.md) |
 | 50 | [Common Beginner Mistakes](lessons/50-common-beginner-mistakes.md) |
 
-### Week 3 — Building with AI
+### Building with AI
 | # | Lesson |
 |---|--------|
 | 51 | [What is a Prompt?](lessons/51-what-is-a-prompt.md) |
