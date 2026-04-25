@@ -1,13 +1,76 @@
 # Inbox
 
 Paste topics here — one per line with a `-` dash.
-The daily action reads this file **first** before planning its own topics.
-Once a topic is published, it gets removed from here automatically.
-
-You can paste anything:
-- A topic name: `What is WebAssembly?`
-- A short phrase: `Progressive Web Apps`
-- A URL from an article you found interesting
+The daily action reads this file first and removes each item after publishing.
 
 ---
 
+- Angular
+- Vue.js
+- Svelte
+- SolidJS
+- Next.js
+- Nuxt.js
+- SvelteKit
+- Astro
+- Remix
+- React Native
+- Electron
+- Tauri
+- Ionic
+- Flutter
+- Bun
+- Vitest
+- Jest
+- Playwright
+- Cypress
+- ESLint
+- Prettier
+- Biome
+- esbuild
+- Rollup
+- Parcel
+- SWC
+- Rolldown
+- Vercel
+- Netlify
+- Railway
+- Render
+- Cloudflare Pages
+- GitHub Pages
+- Supabase
+- Firebase
+- PlanetScale
+- MongoDB
+- PostgreSQL
+- Redis
+- Prisma
+- Drizzle ORM
+- Auth.js
+- Clerk
+- Stripe API
+- Tanstack Query
+- Zustand
+- Redux Toolkit
+- Framer Motion
+- Radix UI
+- shadcn/ui
+- Storybook
+- Turborepo
+- pnpm
+- Yarn
+- Docker Compose
+- Nginx
+- PM2
+- WebAssembly
+- Service Workers
+- PWA
+- Web Components
+- Lighthouse
+- Sentry
+- PostCSS
+- Apollo GraphQL
+- tRPC
+- Hono
+- Fastify
+- Socket.io
