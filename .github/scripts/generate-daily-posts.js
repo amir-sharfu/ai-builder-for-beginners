@@ -5,111 +5,191 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "../..");
-const TOPICS_FILE = path.join(ROOT, ".github/topics.md");
-const LESSONS_DIR = path.join(ROOT, "lessons/05-advanced");
+const LESSONS_DIR = path.join(ROOT, "lessons");
+const ADVANCED_DIR = path.join(ROOT, "lessons/05-advanced");
+const LOG_FILE = path.join(ROOT, "topics.md");
+const REPO = "https://github.com/amir-sharfu/ai-builder-for-beginners";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-function parseTopics(content) {
-  return content
-    .split("\n")
-    .map((line) => {
-      const pending = line.match(/^- \[ \] (.+\.md) \| (.+)$/);
-      const done = line.match(/^- \[x\] (.+\.md) \| (.+)$/);
-      if (pending) return { filename: pending[1], title: pending[2], done: false, raw: line };
-      if (done) return { filename: done[1], title: done[2], done: true, raw: line };
-      return null;
-    })
-    .filter(Boolean);
+// ── collect all existing lesson titles from the repo ──────────────────────────
+
+function getAllExistingLessons() {
+  const existing = [];
+  function scanDir(dir) {
+    if (!fs.existsSync(dir)) return;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        scanDir(path.join(dir, entry.name));
+      } else if (entry.name.endsWith(".md") && entry.name !== "README.md") {
+        const content = fs.readFileSync(path.join(dir, entry.name), "utf8");
+        const titleMatch = content.match(/^#\s+(.+)$/m);
+        const title = titleMatch ? titleMatch[1].trim() : entry.name;
+        existing.push({ filename: entry.name, title });
+      }
+    }
+  }
+  scanDir(LESSONS_DIR);
+  return existing;
 }
 
-async function generateLesson(filename, title) {
-  const number = filename.split("-")[0];
+// ── ask Claude to suggest 5 new unique topics ─────────────────────────────────
+
+async function suggestNewTopics(existingLessons) {
+  const existingTitles = existingLessons.map(l => `- ${l.title}`).join("\n");
+  const nextNum = existingLessons.length + 1;
+
   const message = await client.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 1024,
     messages: [
       {
         role: "user",
-        content: `Write a beginner-friendly lesson for a web development course targeting non-coders.
+        content: `You are curating a beginner-friendly web development course.
 
-Lesson number: ${number}
-Filename: ${filename}
-Title: ${title}
+Here are ALL the lessons already published:
+${existingTitles}
 
-Use this exact markdown structure:
+Suggest exactly 5 NEW unique web development topics that:
+1. Are NOT already covered in the list above (not even partially)
+2. Are genuinely useful for someone learning to build web apps
+3. Are beginner to intermediate level
+4. Cover a wide range — tools, concepts, protocols, practices, security, performance, patterns
 
-# ${number}. ${title}
+Number the filenames starting from ${nextNum}.
 
-## What is it?
-[2-3 plain English sentences]
-
-## Real World Analogy
-[One short analogy a 10-year-old would understand]
-
-## Live Example
-[Name a real website/tool where this concept is visible, explain where to see it]
-
-## How It Shows Up in a Real App
-[Short code snippet or description of where this appears in a web project]
-
-## What Breaks Without It
-[1-2 sentences on what fails if this concept is missing or misunderstood]
-
-## What to Tell AI When You Need It
-[1-2 example prompts a non-coder could copy-paste to ask Claude Code or ChatGPT about this topic]
-
----
-
-*Part of the [AI Builder for Beginners](../../README.md) course.*
-
-Keep all sections short and jargon-free. No bullet walls. Max 400 words total.
-
-End the lesson with exactly this footer (fill in the actual prev/next lesson titles and filenames):
-
----
-
-← [Previous lesson title](./previous-filename.md) · [Next lesson title](./next-filename.md) →
-
-**Was this helpful?** [❤️ Leave a reaction on GitHub Discussions](https://github.com/amir-sharfu/ai-builder-for-beginners/discussions) — it helps others know which lessons are most valuable.
-
-[↑ Back to course](../../README.md)`,
+Return ONLY a valid JSON array, no explanation, no markdown code block:
+[
+  { "filename": "${nextNum}-slug-here.md", "title": "Human Readable Title" },
+  ...
+]`,
       },
     ],
   });
 
-  return message.content[0].text;
+  const raw = message.content[0].text.trim();
+  const jsonMatch = raw.match(/\[[\s\S]*\]/);
+  if (!jsonMatch) throw new Error(`Could not parse topic suggestions:\n${raw}`);
+  return JSON.parse(jsonMatch[0]);
 }
+
+// ── generate a single lesson ──────────────────────────────────────────────────
+
+async function generateLesson(filename, title, prevEntry, nextTitle) {
+  const number = filename.split("-")[0];
+  const prevLink = prevEntry
+    ? `← [${prevEntry.title}](./${prevEntry.filename})`
+    : `← [Advanced Topics](./README.md)`;
+  const nextLinkText = nextTitle
+    ? `[${nextTitle}](./README.md) →`
+    : `[More coming tomorrow](./README.md) →`;
+
+  const message = await client.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 1500,
+    messages: [
+      {
+        role: "user",
+        content: `Write a beginner-friendly web development lesson for a course targeting non-coders.
+
+Lesson number: ${number}
+Title: ${title}
+
+Use EXACTLY this markdown structure:
+
+# ${title}
+
+> ⏱ X min read · 🟠 Advanced
+
+## One Line Answer
+[1 sentence, plain English]
+
+## Real World Analogy
+[1 short analogy anyone can understand]
+
+## Live Example
+[Name a real website/tool where this concept is visible and explain where to see it]
+
+## How It Shows Up in a Real App
+[Short explanation or small code snippet]
+
+## What Breaks Without It
+[1-2 sentences on what fails if this is missing or ignored]
+
+## What to Tell AI When You Need It
+[1-2 copy-paste prompts a non-coder can use with Claude Code or ChatGPT]
+
+---
+
+${prevLink} · ${nextLinkText}
+
+**Was this helpful?** [❤️ Leave a reaction on GitHub Discussions](${REPO}/discussions) — it helps others know which lessons are most valuable.
+
+[↑ Back to course](../../README.md)
+
+Instructions:
+- Replace X in "⏱ X min read" with the real estimated read time (word count ÷ 200, minimum 2)
+- Keep all sections short and jargon-free, max 400 words total
+- Output only the markdown, nothing before the # title or after the last line`,
+      },
+    ],
+  });
+
+  return message.content[0].text.trim();
+}
+
+// ── append to topics log at repo root ─────────────────────────────────────────
+
+function appendToLog(topics, date) {
+  const header = `# Topics Log\n\nAuto-updated daily. Every row is a lesson generated automatically — no manual input needed.\n\n| Date | Lesson | Title |\n|------|--------|-------|\n`;
+  let log = fs.existsSync(LOG_FILE) ? fs.readFileSync(LOG_FILE, "utf8") : header;
+
+  // If file exists but has old format (checklist style), replace it
+  if (!log.includes("| Date |")) {
+    log = header;
+  }
+
+  for (const t of topics) {
+    log += `| ${date} | [${t.filename}](lessons/05-advanced/${t.filename}) | ${t.title} |\n`;
+  }
+
+  fs.writeFileSync(LOG_FILE, log, "utf8");
+}
+
+// ── main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
-  const topicsContent = fs.readFileSync(TOPICS_FILE, "utf8");
-  const topics = parseTopics(topicsContent);
-  const pending = topics.filter((t) => !t.done);
+  console.log("Scanning existing lessons...");
+  const existing = getAllExistingLessons();
+  console.log(`Found ${existing.length} existing lessons.`);
 
-  if (pending.length === 0) {
-    console.log("All topics completed.");
-    return;
+  console.log("Asking Claude for 5 new unique topics...");
+  const newTopics = await suggestNewTopics(existing);
+  console.log("Suggested:");
+  newTopics.forEach(t => console.log(`  → ${t.filename} | ${t.title}`));
+
+  fs.mkdirSync(ADVANCED_DIR, { recursive: true });
+
+  for (let i = 0; i < newTopics.length; i++) {
+    const topic = newTopics[i];
+    const prev = i === 0
+      ? existing[existing.length - 1]
+      : { filename: newTopics[i - 1].filename, title: newTopics[i - 1].title };
+    const nextTitle = i < newTopics.length - 1 ? newTopics[i + 1].title : null;
+
+    console.log(`  Generating: ${topic.title}...`);
+    const content = await generateLesson(topic.filename, topic.title, prev, nextTitle);
+    fs.writeFileSync(path.join(ADVANCED_DIR, topic.filename), content, "utf8");
+    console.log(`    ✓ Saved`);
   }
 
-  const batch = pending.slice(0, 5);
-  console.log(`Generating ${batch.length} lessons...`);
-
-  let updatedContent = topicsContent;
-
-  for (const topic of batch) {
-    console.log(`  → ${topic.filename}`);
-    const content = await generateLesson(topic.filename, topic.title);
-    const outputPath = path.join(LESSONS_DIR, topic.filename);
-    fs.writeFileSync(outputPath, content, "utf8");
-    updatedContent = updatedContent.replace(topic.raw, topic.raw.replace("- [ ]", "- [x]"));
-    console.log(`    ✓ Written to lessons/${topic.filename}`);
-  }
-
-  fs.writeFileSync(TOPICS_FILE, updatedContent, "utf8");
-  console.log("topics.md updated.");
+  const today = new Date().toISOString().split("T")[0];
+  appendToLog(newTopics, today);
+  console.log("✓ topics.md log updated");
+  console.log(`\n✅ Done — ${newTopics.length} new lessons published.`);
 }
 
-main().catch((err) => {
+main().catch(err => {
   console.error(err);
   process.exit(1);
 });
