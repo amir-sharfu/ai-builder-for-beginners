@@ -6,15 +6,15 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "../..");
 const LESSONS_DIR = path.join(ROOT, "lessons");
-const LOG_FILE = path.join(ROOT, "topics.md");
+const PLAN_FILE = path.join(ROOT, ".github/topics.md");   // hidden from casual visitors
 const REPO = "https://github.com/amir-sharfu/ai-builder-for-beginners";
 
 const FOLDERS = {
-  "01-web-fundamentals":    { label: "🌐 Web Fundamentals",   difficulty: "🟢 Beginner",      backPath: "../../README.md" },
-  "02-backend-and-apis":    { label: "⚙️ Backend & APIs",     difficulty: "🟢 Beginner",      backPath: "../../README.md" },
-  "03-tools-and-protocols": { label: "🛠️ Tools & Protocols",  difficulty: "🟡 Intermediate",  backPath: "../../README.md" },
-  "04-building-with-ai":    { label: "🤖 Building with AI",   difficulty: "🟡 Intermediate",  backPath: "../../README.md" },
-  "05-advanced":            { label: "🚀 Advanced Topics",    difficulty: "🟠 Advanced",      backPath: "../../README.md" },
+  "01-web-fundamentals":    { label: "🌐 Web Fundamentals",  difficulty: "🟢 Beginner"     },
+  "02-backend-and-apis":    { label: "⚙️ Backend & APIs",    difficulty: "🟢 Beginner"     },
+  "03-tools-and-protocols": { label: "🛠️ Tools & Protocols", difficulty: "🟡 Intermediate" },
+  "04-building-with-ai":    { label: "🤖 Building with AI",  difficulty: "🟡 Intermediate" },
+  "05-advanced":            { label: "🚀 Advanced Topics",   difficulty: "🟠 Advanced"     },
 };
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -42,10 +42,27 @@ function getAllExistingLessons() {
   return existing.sort((a, b) => a.filename.localeCompare(b.filename));
 }
 
-// ── ask Claude for 5 new topics with smart folder placement ───────────────────
+// ── read planned topics from .github/topics.md ───────────────────────────────
 
-async function suggestNewTopics(existingLessons) {
+function readPlannedTopics() {
+  if (!fs.existsSync(PLAN_FILE)) return [];
+  const content = fs.readFileSync(PLAN_FILE, "utf8");
+  const planSection = content.match(/## 📅 Up Next \(Tomorrow\)([\s\S]*?)(?=##|$)/);
+  if (!planSection) return [];
+
+  const rows = planSection[1].match(/^\|\s*\d+\s*\|(.+)$/gm) || [];
+  return rows.map(row => {
+    const cols = row.split("|").map(s => s.trim()).filter(Boolean);
+    // cols: [index, filename, title, folder]
+    return { filename: cols[1], title: cols[2], folder: cols[3] };
+  }).filter(t => t.filename && t.title && FOLDERS[t.folder]);
+}
+
+// ── ask Claude for N new unique topics with smart folder placement ─────────────
+
+async function suggestTopics(existingLessons, count, excludeTitles = []) {
   const existingList = existingLessons.map(l => `- [${l.folder}] ${l.title}`).join("\n");
+  const excludeList = excludeTitles.map(t => `- ${t}`).join("\n");
   const nextNum = existingLessons.length + 1;
 
   const folderDescriptions = Object.entries(FOLDERS)
@@ -60,17 +77,18 @@ async function suggestNewTopics(existingLessons) {
         role: "user",
         content: `You are curating a beginner-friendly web development and AI course.
 
-These are the course folders:
+Course folders:
 ${folderDescriptions}
 
-Here are ALL lessons already published (with their folder):
+ALL lessons already published:
 ${existingList}
 
-Suggest exactly 5 NEW lessons that:
-1. Are NOT already covered above (not even partially)
-2. Are useful for beginners learning web development OR relevant to building with AI in the future
-3. Can belong to ANY of the folders above — pick the most appropriate one for each
-4. Cover a good mix: some beginner-friendly fundamentals, some tools, some AI-related topics
+${excludeList ? `Also exclude these already-planned topics:\n${excludeList}\n` : ""}
+Suggest exactly ${count} NEW lessons that:
+1. Are NOT already covered or planned above (not even partially)
+2. Are useful for beginners learning web development OR relevant to building with AI
+3. Belong to the most appropriate folder for each topic
+4. Cover a good mix: some beginner fundamentals, some tools, some AI-related
 
 Number filenames starting from ${nextNum}.
 
@@ -79,9 +97,8 @@ Return ONLY a valid JSON array, no explanation, no code block:
   {
     "filename": "${nextNum}-slug.md",
     "title": "Human Readable Title",
-    "folder": "one-of-the-five-folder-keys-above"
-  },
-  ...
+    "folder": "exact-folder-key"
+  }
 ]`,
       },
     ],
@@ -89,12 +106,9 @@ Return ONLY a valid JSON array, no explanation, no code block:
 
   const raw = message.content[0].text.trim();
   const jsonMatch = raw.match(/\[[\s\S]*\]/);
-  if (!jsonMatch) throw new Error(`Could not parse topic suggestions:\n${raw}`);
+  if (!jsonMatch) throw new Error(`Could not parse suggestions:\n${raw}`);
 
-  const topics = JSON.parse(jsonMatch[0]);
-
-  // Validate folders, fall back to 05-advanced if unknown
-  return topics.map(t => ({
+  return JSON.parse(jsonMatch[0]).map(t => ({
     ...t,
     folder: FOLDERS[t.folder] ? t.folder : "05-advanced",
   }));
@@ -106,16 +120,12 @@ async function generateLesson(filename, title, folder, prevEntry, nextTitle) {
   const number = filename.split("-")[0];
   const meta = FOLDERS[folder];
 
-  // Relative path from lesson file back to repo root depends on nesting depth
-  const backToRoot = "../../README.md";
-  const backToFolder = "./README.md";
-
   const prevLink = prevEntry
     ? `← [${prevEntry.title}](./${prevEntry.filename})`
-    : `← [${meta.label}](${backToFolder})`;
+    : `← [${meta.label}](./README.md)`;
   const nextLinkText = nextTitle
-    ? `[${nextTitle}](${backToFolder}) →`
-    : `[More coming tomorrow](${backToFolder}) →`;
+    ? `[${nextTitle}](./README.md) →`
+    : `[More coming tomorrow](./README.md) →`;
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-6",
@@ -160,12 +170,12 @@ ${prevLink} · ${nextLinkText}
 
 **Was this helpful?** [❤️ Leave a reaction on GitHub Discussions](${REPO}/discussions) — it helps others know which lessons are most valuable.
 
-[↑ Back to course](${backToRoot})
+[↑ Back to course](../../README.md)
 
 Rules:
-- Replace X in "⏱ X min read" with actual estimated minutes (word count ÷ 200, minimum 2)
-- Keep all sections short and jargon-free, max 400 words total
-- Output only the markdown, nothing before the # title or after the final line`,
+- Replace X with real estimated read time (word count ÷ 200, minimum 2)
+- Max 400 words total, jargon-free
+- Output only the markdown, nothing before the # title or after the last line`,
       },
     ],
   });
@@ -173,64 +183,77 @@ Rules:
   return message.content[0].text.trim();
 }
 
-// ── update folder README after adding a lesson ────────────────────────────────
+// ── update folder README ──────────────────────────────────────────────────────
 
 function updateFolderReadme(folder) {
   const folderPath = path.join(LESSONS_DIR, folder);
   const meta = FOLDERS[folder];
-
   const files = fs.readdirSync(folderPath)
     .filter(f => f.endsWith(".md") && f !== "README.md")
     .sort();
 
   let totalMins = 0;
   let table = `| # | Lesson | Read Time |\n|---|--------|-----------|\n`;
-
   for (const file of files) {
     const content = fs.readFileSync(path.join(folderPath, file), "utf8");
     const titleMatch = content.match(/^#\s+(.+)$/m);
     const title = titleMatch ? titleMatch[1].trim() : file;
-    const words = content.trim().split(/\s+/).length;
-    const mins = Math.max(2, Math.ceil(words / 200));
+    const mins = Math.max(2, Math.ceil(content.trim().split(/\s+/).length / 200));
     totalMins += mins;
-    const num = file.split("-")[0];
-    table += `| ${num} | [${title}](./${file}) | ${mins} min |\n`;
+    table += `| ${file.split("-")[0]} | [${title}](./${file}) | ${mins} min |\n`;
   }
 
-  const readme = `# ${meta.label}
-
-> ${files.length} lessons · ~${totalMins} min total · ${meta.difficulty}
-
----
-
-## Lessons
-
-${table}
----
-
-[← Back to Course](../../README.md)
-`;
-
-  fs.writeFileSync(path.join(folderPath, "README.md"), readme, "utf8");
+  fs.writeFileSync(path.join(folderPath, "README.md"),
+    `# ${meta.label}\n\n> ${files.length} lessons · ~${totalMins} min total · ${meta.difficulty}\n\n---\n\n## Lessons\n\n${table}\n---\n\n[← Back to Course](../../README.md)\n`
+  );
 }
 
-// ── append to topics log at repo root ─────────────────────────────────────────
+// ── write .github/topics.md with history + tomorrow's plan ───────────────────
 
-function appendToLog(topics, date) {
-  const header = `# Topics Log\n\nAuto-updated daily at 9:00 AM IST. Every row is a lesson generated automatically — no manual input needed.\n\n| Date | Folder | Lesson | Title |\n|------|--------|--------|-------|\n`;
-  let log = fs.existsSync(LOG_FILE) ? fs.readFileSync(LOG_FILE, "utf8") : header;
-
-  // Migrate old format if needed
-  if (!log.includes("| Folder |")) {
-    log = header;
+function updatePlanFile(todayTopics, tomorrowTopics, date) {
+  let history = "";
+  if (fs.existsSync(PLAN_FILE)) {
+    const existing = fs.readFileSync(PLAN_FILE, "utf8");
+    const historyMatch = existing.match(/## 📋 History([\s\S]*?)(?=##|$)/);
+    history = historyMatch ? historyMatch[1].trim() : "";
   }
 
-  for (const t of topics) {
+  // Append today's lessons to history
+  for (const t of todayTopics) {
     const folderLabel = FOLDERS[t.folder]?.label ?? t.folder;
-    log += `| ${date} | ${folderLabel} | [${t.filename}](lessons/${t.folder}/${t.filename}) | ${t.title} |\n`;
+    history += `\n| ${date} | ${folderLabel} | [${t.filename}](../lessons/${t.folder}/${t.filename}) | ${t.title} |`;
   }
 
-  fs.writeFileSync(LOG_FILE, log, "utf8");
+  const tomorrowTable = tomorrowTopics.map((t, i) => {
+    const folderLabel = FOLDERS[t.folder]?.label ?? t.folder;
+    return `| ${i + 1} | ${t.filename} | ${t.title} | ${t.folder} |`;
+  }).join("\n");
+
+  const content = `# Automation Plan
+
+> This file is auto-managed. Do not edit manually.
+> Check here to see what lessons are coming tomorrow.
+
+---
+
+## 📅 Up Next (Tomorrow)
+
+Last planned: ${date}
+
+| # | Filename | Title | Folder |
+|---|----------|-------|--------|
+${tomorrowTable}
+
+---
+
+## 📋 History
+
+| Date | Section | Lesson | Title |
+|------|---------|--------|-------|
+${history.trim()}
+`;
+
+  fs.writeFileSync(PLAN_FILE, content, "utf8");
 }
 
 // ── main ──────────────────────────────────────────────────────────────────────
@@ -240,22 +263,29 @@ async function main() {
   const existing = getAllExistingLessons();
   console.log(`Found ${existing.length} existing lessons.`);
 
-  console.log("Asking Claude for 5 new unique topics with smart folder placement...");
-  const newTopics = await suggestNewTopics(existing);
-  console.log("Topics selected:");
-  newTopics.forEach(t => console.log(`  [${t.folder}] ${t.filename} — ${t.title}`));
+  // Use pre-planned topics if available, otherwise ask Claude now
+  let todayTopics = readPlannedTopics();
+  if (todayTopics.length === 5) {
+    console.log("Using pre-planned topics from .github/topics.md:");
+    todayTopics.forEach(t => console.log(`  [${t.folder}] ${t.filename} — ${t.title}`));
+  } else {
+    console.log("No pre-planned topics found. Asking Claude for today's topics...");
+    todayTopics = await suggestTopics(existing, 5);
+    console.log("Topics selected:");
+    todayTopics.forEach(t => console.log(`  [${t.folder}] ${t.filename} — ${t.title}`));
+  }
 
+  // Generate today's lessons
   const foldersUpdated = new Set();
-
-  for (let i = 0; i < newTopics.length; i++) {
-    const topic = newTopics[i];
+  for (let i = 0; i < todayTopics.length; i++) {
+    const topic = todayTopics[i];
     const destDir = path.join(LESSONS_DIR, topic.folder);
     fs.mkdirSync(destDir, { recursive: true });
 
     const prev = i === 0
       ? existing[existing.length - 1]
-      : { filename: newTopics[i - 1].filename, title: newTopics[i - 1].title };
-    const nextTitle = i < newTopics.length - 1 ? newTopics[i + 1].title : null;
+      : { filename: todayTopics[i - 1].filename, title: todayTopics[i - 1].title };
+    const nextTitle = i < todayTopics.length - 1 ? todayTopics[i + 1].title : null;
 
     console.log(`  Generating: ${topic.title} → lessons/${topic.folder}/`);
     const content = await generateLesson(topic.filename, topic.title, topic.folder, prev, nextTitle);
@@ -264,16 +294,22 @@ async function main() {
     console.log(`    ✓ Saved`);
   }
 
-  // Update README.md for every folder that got new lessons
   for (const folder of foldersUpdated) {
     updateFolderReadme(folder);
     console.log(`  ✓ Updated lessons/${folder}/README.md`);
   }
 
+  // Pre-plan tomorrow's 5 topics
+  console.log("\nPre-planning tomorrow's 5 topics...");
+  const allNow = [...existing, ...todayTopics];
+  const tomorrowTopics = await suggestTopics(allNow, 5, todayTopics.map(t => t.title));
+  console.log("Tomorrow's plan:");
+  tomorrowTopics.forEach(t => console.log(`  [${t.folder}] ${t.filename} — ${t.title}`));
+
   const today = new Date().toISOString().split("T")[0];
-  appendToLog(newTopics, today);
-  console.log("✓ topics.md log updated");
-  console.log(`\n✅ Done — ${newTopics.length} new lessons published.`);
+  updatePlanFile(todayTopics, tomorrowTopics, today);
+  console.log("✓ .github/topics.md updated with history + tomorrow's plan");
+  console.log(`\n✅ Done — ${todayTopics.length} lessons published, ${tomorrowTopics.length} planned for tomorrow.`);
 }
 
 main().catch(err => {
