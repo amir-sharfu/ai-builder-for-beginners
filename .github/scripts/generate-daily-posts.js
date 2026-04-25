@@ -18,13 +18,11 @@ const FOLDERS = {
   "05-advanced":            { label: "🚀 Advanced Topics",   difficulty: "🟠 Advanced"     },
 };
 
-// RSS feeds from popular web dev / AI sources
 const RSS_FEEDS = [
   "https://dev.to/feed",
   "https://web.dev/feed.xml",
   "https://developer.mozilla.org/en-US/blog/rss.xml",
   "https://css-tricks.com/feed/",
-  "https://blog.openai.com/rss/",
 ];
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -44,7 +42,7 @@ function getAllExistingLessons() {
         const titleMatch = content.match(/^#\s+(.+)$/m);
         const title = titleMatch ? titleMatch[1].trim() : entry.name;
         const folder = path.relative(LESSONS_DIR, path.dirname(fullPath));
-        existing.push({ filename: entry.name, title, folder });
+        existing.push({ filename: entry.name, title, folder, fullPath });
       }
     }
   }
@@ -52,42 +50,41 @@ function getAllExistingLessons() {
   return existing.sort((a, b) => a.filename.localeCompare(b.filename));
 }
 
-// ── read inbox.md — returns raw items and removes consumed lines ──────────────
+// ── read inbox — consume 1 item ───────────────────────────────────────────────
 
-function readInbox(limit) {
-  if (!fs.existsSync(INBOX_FILE)) return [];
+function readInbox() {
+  if (!fs.existsSync(INBOX_FILE)) return null;
   const content = fs.readFileSync(INBOX_FILE, "utf8");
-
   const lines = content.split("\n");
-  const topics = [];
+  let topic = null;
   const remaining = [];
   let pastDivider = false;
+  let consumed = false;
 
   for (const line of lines) {
     if (line.trim() === "---") { pastDivider = true; remaining.push(line); continue; }
     if (!pastDivider) { remaining.push(line); continue; }
-
     const match = line.match(/^-\s+(.+)$/);
-    if (match && topics.length < limit) {
-      topics.push(match[1].trim());
+    if (match && !consumed) {
+      topic = match[1].trim();
+      consumed = true;
     } else {
       remaining.push(line);
     }
   }
 
-  if (topics.length > 0) {
+  if (topic) {
     fs.writeFileSync(INBOX_FILE, remaining.join("\n"), "utf8");
-    console.log(`  Inbox: consumed ${topics.length} item(s), ${remaining.filter(l => /^-\s+/.test(l)).length} remaining.`);
+    console.log(`  Inbox: consumed "${topic}", ${remaining.filter(l => /^-\s+/.test(l)).length} remaining.`);
   }
 
-  return topics;
+  return topic;
 }
 
-// ── fetch RSS feeds and extract article titles ────────────────────────────────
+// ── fetch RSS feeds ───────────────────────────────────────────────────────────
 
-async function fetchInternetTopics() {
+async function fetchInternetTitles() {
   const titles = [];
-
   for (const url of RSS_FEEDS) {
     try {
       const res = await fetch(url, {
@@ -96,36 +93,40 @@ async function fetchInternetTopics() {
       });
       if (!res.ok) continue;
       const xml = await res.text();
-      // Extract <title> tags (skip the first one — that's the feed title)
       const matches = [...xml.matchAll(/<title[^>]*><!\[CDATA\[([^\]]+)\]\]><\/title>|<title[^>]*>([^<]+)<\/title>/g)];
       matches.slice(1, 8).forEach(m => {
         const t = (m[1] || m[2] || "").trim();
         if (t) titles.push(t);
       });
-      console.log(`  Fetched ${Math.min(7, matches.length - 1)} titles from ${url}`);
     } catch {
       console.log(`  Could not reach ${url}, skipping.`);
     }
   }
-
   return titles;
 }
 
-// ── ask Claude to pick 5 topics from internet titles ─────────────────────────
+// ── pick 1 topic — frameworks/tools/apps only ────────────────────────────────
 
-async function pickFromInternet(internetTitles, existingLessons, nextNum) {
+async function pickOneTopic(raw, existingLessons, nextNum, fromInternet = false) {
   const existingList = existingLessons.map(l => `- ${l.title}`).join("\n");
   const folderDescriptions = Object.entries(FOLDERS)
     .map(([key, val]) => `  "${key}" — ${val.label}`)
     .join("\n");
 
+  const focus = fromInternet
+    ? `From these recent web articles, pick exactly 1 topic that is a real framework, tool, library, or app (e.g. Angular, Astro, Vitest, Electron, SvelteKit, Playwright) — NOT a concept or theory. If none fit, invent one based on the theme.
+
+Articles:
+${raw}`
+    : `The course owner wants a lesson about: "${raw}"
+Turn this into a clean lesson title about the framework, tool, or app.`;
+
   const message = await client.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 1024,
-    messages: [
-      {
-        role: "user",
-        content: `You are curating a beginner-friendly web development and AI course.
+    max_tokens: 512,
+    messages: [{
+      role: "user",
+      content: `You are curating a beginner-friendly web development course.
 
 Course folders:
 ${folderDescriptions}
@@ -133,112 +134,153 @@ ${folderDescriptions}
 Lessons already published (do NOT duplicate):
 ${existingList}
 
-Here are recent article titles fetched from the web today:
-${internetTitles.map((t, i) => `${i + 1}. ${t}`).join("\n")}
+${focus}
 
-From these internet titles, pick or inspire exactly 5 lesson topics that:
-1. Are genuinely useful for a beginner learning web dev or AI
-2. Are NOT already covered in the published lessons above
-3. Can be explained simply with a real-world analogy
-4. Belong to the most appropriate course folder
+Rules:
+- Pick only 1 topic
+- Must be a real framework, tool, library, or app — not a concept or theory
+- Must NOT already be covered above
+- Number the filename starting from ${nextNum}
 
-If a title is too advanced or niche, adapt it into a beginner-friendly angle.
-Number filenames starting from ${nextNum}.
-
-Return ONLY a valid JSON array, no explanation:
-[
-  {
-    "filename": "${nextNum}-slug.md",
-    "title": "Human Readable Title",
-    "folder": "exact-folder-key",
-    "inspired_by": "original internet title that inspired this"
-  }
-]`,
-      },
-    ],
+Return ONLY a valid JSON object:
+{
+  "filename": "${nextNum}-slug.md",
+  "title": "What is [Tool/Framework]?",
+  "folder": "exact-folder-key"
+}`,
+    }],
   });
 
-  const raw = message.content[0].text.trim();
-  const jsonMatch = raw.match(/\[[\s\S]*\]/);
-  if (!jsonMatch) throw new Error(`Could not parse internet topic picks:\n${raw}`);
-
-  return JSON.parse(jsonMatch[0]).map(t => ({
-    filename: t.filename,
-    title: t.title,
-    folder: FOLDERS[t.folder] ? t.folder : "05-advanced",
-    inspired_by: t.inspired_by || "",
-  }));
+  const raw2 = message.content[0].text.trim();
+  const jsonMatch = raw2.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error(`Could not parse topic: ${raw2}`);
+  const t = JSON.parse(jsonMatch[0]);
+  return { ...t, folder: FOLDERS[t.folder] ? t.folder : "05-advanced" };
 }
 
-// ── ask Claude to resolve inbox raw items into structured topics ──────────────
+// ── audit: review 3 random lessons, rewrite any that are weak ────────────────
 
-async function resolveInboxTopics(rawItems, existingLessons, nextNum) {
-  const existingList = existingLessons.map(l => `- ${l.title}`).join("\n");
-  const folderDescriptions = Object.entries(FOLDERS)
-    .map(([key, val]) => `  "${key}" — ${val.label}`)
-    .join("\n");
+async function auditLessons(existing) {
+  if (existing.length < 3) return;
+
+  // Pick 3 random lessons to review
+  const sample = existing
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 3);
+
+  for (const lesson of sample) {
+    const content = fs.readFileSync(lesson.fullPath, "utf8");
+    const words = content.trim().split(/\s+/).length;
+
+    const message = await client.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 256,
+      messages: [{
+        role: "user",
+        content: `You are reviewing a lesson from a beginner-friendly web development course.
+
+Title: ${lesson.title}
+Word count: ${words}
+
+First 300 words of the lesson:
+${content.slice(0, 1200)}
+
+Is this lesson:
+1. Clear and useful for a complete beginner?
+2. Written in plain English with a good real-world analogy?
+3. The right length (150–400 words)?
+
+Reply with ONLY one of:
+- "OK" — lesson is fine
+- "REWRITE: [one sentence reason]" — lesson needs improvement`,
+      }],
+    });
+
+    const verdict = message.content[0].text.trim();
+    if (verdict.startsWith("REWRITE")) {
+      const reason = verdict.replace("REWRITE:", "").trim();
+      console.log(`  ⚠️  Rewriting: ${lesson.title} — ${reason}`);
+      await rewriteLesson(lesson, content, reason);
+    } else {
+      console.log(`  ✓ OK: ${lesson.title}`);
+    }
+  }
+}
+
+async function rewriteLesson(lesson, oldContent, reason) {
+  const meta = FOLDERS[lesson.folder] || FOLDERS["05-advanced"];
+  const number = lesson.filename.split("-")[0];
+
+  // Preserve existing footer (prev/next links)
+  const footerMatch = oldContent.match(/\n---\n\n←[\s\S]*$/);
+  const footer = footerMatch ? footerMatch[0] : "";
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 1024,
-    messages: [
-      {
-        role: "user",
-        content: `You are curating a beginner-friendly web development and AI course.
+    max_tokens: 1500,
+    messages: [{
+      role: "user",
+      content: `Rewrite this beginner web dev lesson to be clearer and more useful.
 
-Course folders:
-${folderDescriptions}
+Reason it needs rewriting: ${reason}
 
-Lessons already published (do not duplicate):
-${existingList}
+Lesson number: ${number}
+Title: ${lesson.title}
+Section: ${meta.label}
+Difficulty: ${meta.difficulty}
 
-The course owner has pasted these topic ideas:
-${rawItems.map((t, i) => `${i + 1}. ${t}`).join("\n")}
+Use EXACTLY this structure:
 
-For each item, write a clear beginner-friendly lesson title, assign the best folder, and generate a filename starting from ${nextNum}.
+# ${lesson.title}
 
-Return ONLY a valid JSON array, one entry per item, in the same order:
-[
-  {
-    "filename": "${nextNum}-slug.md",
-    "title": "Human Readable Title",
-    "folder": "exact-folder-key"
-  }
-]`,
-      },
-    ],
+> ⏱ X min read · ${meta.difficulty}
+
+## One Line Answer
+[1 sentence, plain English]
+
+## Real World Analogy
+[1 short analogy anyone can understand]
+
+## Live Example
+[A real website or tool, explain where to see it]
+
+## How It Shows Up in a Real App
+[Short explanation or small code snippet]
+
+## What Breaks Without It
+[1-2 sentences]
+
+## What to Tell AI When You Need It
+[1-2 copy-paste prompts]
+
+Rules:
+- Replace X with real read time (word count ÷ 200, min 2)
+- Max 400 words, jargon-free
+- Output only the markdown content above — no footer, nothing after the last section`,
+    }],
   });
 
-  const raw = message.content[0].text.trim();
-  const jsonMatch = raw.match(/\[[\s\S]*\]/);
-  if (!jsonMatch) throw new Error(`Could not parse inbox resolution:\n${raw}`);
-
-  return JSON.parse(jsonMatch[0]).map(t => ({
-    ...t,
-    folder: FOLDERS[t.folder] ? t.folder : "05-advanced",
-  }));
+  const newBody = message.content[0].text.trim();
+  fs.writeFileSync(lesson.fullPath, newBody + footer, "utf8");
+  console.log(`    ✓ Rewritten: ${lesson.filename}`);
 }
 
-// ── generate a single lesson ──────────────────────────────────────────────────
+// ── generate the new lesson ───────────────────────────────────────────────────
 
-async function generateLesson(filename, title, folder, prevEntry, nextTitle) {
+async function generateLesson(filename, title, folder, prevEntry) {
   const number = filename.split("-")[0];
   const meta = FOLDERS[folder];
 
   const prevLink = prevEntry
     ? `← [${prevEntry.title}](./${prevEntry.filename})`
     : `← [${meta.label}](./README.md)`;
-  const nextLinkText = nextTitle
-    ? `[${nextTitle}](./README.md) →`
-    : `[More coming tomorrow](./README.md) →`;
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 1500,
-    messages: [
-      {
-        role: "user",
-        content: `Write a beginner-friendly lesson for a web development and AI course targeting non-coders.
+    messages: [{
+      role: "user",
+      content: `Write a beginner-friendly lesson about a real framework, tool, or app for a web development course targeting non-coders.
 
 Lesson number: ${number}
 Title: ${title}
@@ -258,31 +300,30 @@ Use EXACTLY this markdown structure:
 [1 short analogy anyone can understand without a tech background]
 
 ## Live Example
-[Name a real website or tool where this concept is visible. Explain exactly where to see it.]
+[The actual website or tool URL. Explain exactly what to click or look at.]
 
 ## How It Shows Up in a Real App
-[Short explanation or minimal code snippet showing where this appears in a web project]
+[Short explanation or minimal code snippet — show how a developer actually uses this tool/framework]
 
 ## What Breaks Without It
-[1-2 sentences on what fails or goes wrong if this concept is missing or ignored]
+[1-2 sentences on what you'd have to do manually if this tool didn't exist]
 
 ## What to Tell AI When You Need It
-[1-2 copy-paste prompts a non-coder can use with Claude Code or ChatGPT to get help with this topic]
+[1-2 copy-paste prompts a non-coder can use with Claude Code to get started with this tool]
 
 ---
 
-${prevLink} · ${nextLinkText}
+${prevLink} · [More coming tomorrow](./README.md) →
 
 **Was this helpful?** [❤️ Leave a reaction on GitHub Discussions](${REPO}/discussions) — it helps others know which lessons are most valuable.
 
 [↑ Back to course](../../README.md)
 
 Rules:
-- Replace X with real estimated read time (word count ÷ 200, minimum 2)
-- Max 400 words total, jargon-free
+- Replace X with real read time (word count ÷ 200, min 2)
+- Max 400 words, jargon-free
 - Output only the markdown, nothing before the # title or after the last line`,
-      },
-    ],
+    }],
   });
 
   return message.content[0].text.trim();
@@ -313,24 +354,20 @@ function updateFolderReadme(folder) {
   );
 }
 
-// ── update .github/topics.md ──────────────────────────────────────────────────
+// ── update .github/topics.md log ─────────────────────────────────────────────
 
-function updatePlanFile(todayTopics, source, date) {
+function updateLog(topic, source, date) {
   let history = "";
   if (fs.existsSync(PLAN_FILE)) {
     const existing = fs.readFileSync(PLAN_FILE, "utf8");
-    const historyMatch = existing.match(/## 📋 History([\s\S]*?)$/);
-    history = historyMatch ? historyMatch[1].trim() : "";
+    const match = existing.match(/## 📋 History([\s\S]*?)$/);
+    history = match ? match[1].trim() : "";
   }
-
-  for (const t of todayTopics) {
-    const folderLabel = FOLDERS[t.folder]?.label ?? t.folder;
-    const note = t.inspired_by ? ` *(from: ${t.inspired_by})*` : "";
-    history += `\n| ${date} | ${source} | ${folderLabel} | [${t.filename}](../lessons/${t.folder}/${t.filename}) | ${t.title}${note} |`;
-  }
+  const folderLabel = FOLDERS[topic.folder]?.label ?? topic.folder;
+  history += `\n| ${date} | ${source} | ${folderLabel} | [${topic.filename}](../lessons/${topic.folder}/${topic.filename}) | ${topic.title} |`;
 
   fs.writeFileSync(PLAN_FILE,
-    `# Automation Log\n\n> Auto-managed. Shows how each day's topics were sourced and what was published.\n\n---\n\n## 📋 History\n\n| Date | Source | Section | Lesson | Title |\n|------|--------|---------|--------|-------|\n${history.trim()}\n`
+    `# Automation Log\n\n> Auto-managed. 1 lesson published per day.\n\n---\n\n## 📋 History\n\n| Date | Source | Section | Lesson | Title |\n|------|--------|---------|--------|-------|\n${history.trim()}\n`
   );
 }
 
@@ -341,73 +378,50 @@ async function main() {
   const existing = getAllExistingLessons();
   console.log(`Found ${existing.length} existing lessons.`);
 
-  const nextNum = existing.length + 1;
-  let todayTopics = [];
-  let source = "";
+  // Step 1: audit existing lessons
+  console.log("\nAuditing existing lessons...");
+  await auditLessons(existing);
 
-  // Priority 1: inbox.md — user-curated items
-  const inboxRaw = readInbox(5);
-  if (inboxRaw.length > 0) {
-    console.log(`\n📥 Inbox has ${inboxRaw.length} item(s). Using inbox topics.`);
-    todayTopics = await resolveInboxTopics(inboxRaw, existing, nextNum);
+  // Step 2: pick today's 1 topic
+  const nextNum = existing.length + 1;
+  let topic;
+  let source;
+
+  const inboxItem = readInbox();
+  if (inboxItem) {
+    console.log(`\n📥 Inbox item: "${inboxItem}"`);
+    topic = await pickOneTopic(inboxItem, existing, nextNum, false);
     source = "📥 Inbox";
   } else {
-    // Priority 2: inbox is empty → explore the internet
-    console.log("\n📭 Inbox is empty. Fetching topics from the internet...");
-    const internetTitles = await fetchInternetTopics();
-
-    if (internetTitles.length >= 5) {
-      console.log(`  Found ${internetTitles.length} titles from the web. Asking Claude to pick 5...`);
-      todayTopics = await pickFromInternet(internetTitles, existing, nextNum);
+    console.log("\n📭 Inbox empty. Fetching from internet...");
+    const titles = await fetchInternetTitles();
+    if (titles.length >= 3) {
+      topic = await pickOneTopic(titles.join("\n"), existing, nextNum, true);
       source = "🌐 Internet";
     } else {
-      // Fallback: not enough internet content (network issues), Claude picks from knowledge
-      console.log("  Not enough internet content. Falling back to Claude's knowledge...");
-      const message = await client.messages.create({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1024,
-        messages: [{
-          role: "user",
-          content: `Suggest 5 beginner-friendly web development or AI topics that are currently relevant and NOT in this list:\n${existing.map(l => `- ${l.title}`).join("\n")}\n\nReturn ONLY a JSON array:\n[{"filename":"${nextNum}-slug.md","title":"Title","folder":"folder-key"}]`,
-        }],
-      });
-      const raw = message.content[0].text.trim();
-      const jsonMatch = raw.match(/\[[\s\S]*\]/);
-      todayTopics = JSON.parse(jsonMatch[0]).map(t => ({ ...t, folder: FOLDERS[t.folder] ? t.folder : "05-advanced" }));
+      console.log("  Falling back to Claude...");
+      topic = await pickOneTopic("Pick any relevant modern web framework or developer tool not already covered.", existing, nextNum, false);
       source = "🤖 Claude";
     }
   }
 
-  todayTopics = todayTopics.slice(0, 5);
-  console.log(`\nToday's topics (source: ${source}):`);
-  todayTopics.forEach(t => console.log(`  [${t.folder}] ${t.filename} — ${t.title}`));
+  console.log(`\nToday's lesson (${source}): [${topic.folder}] ${topic.filename} — ${topic.title}`);
 
-  // Generate lessons
-  const foldersUpdated = new Set();
-  for (let i = 0; i < todayTopics.length; i++) {
-    const topic = todayTopics[i];
-    fs.mkdirSync(path.join(LESSONS_DIR, topic.folder), { recursive: true });
+  // Step 3: generate the lesson
+  const prev = existing[existing.length - 1];
+  fs.mkdirSync(path.join(LESSONS_DIR, topic.folder), { recursive: true });
+  const content = await generateLesson(topic.filename, topic.title, topic.folder, prev);
+  fs.writeFileSync(path.join(LESSONS_DIR, topic.folder, topic.filename), content, "utf8");
+  console.log(`  ✓ Saved to lessons/${topic.folder}/${topic.filename}`);
 
-    const prev = i === 0
-      ? existing[existing.length - 1]
-      : { filename: todayTopics[i - 1].filename, title: todayTopics[i - 1].title };
-    const nextTitle = i < todayTopics.length - 1 ? todayTopics[i + 1].title : null;
+  // Step 4: update folder README
+  updateFolderReadme(topic.folder);
 
-    console.log(`  Generating: ${topic.title} → lessons/${topic.folder}/`);
-    const content = await generateLesson(topic.filename, topic.title, topic.folder, prev, nextTitle);
-    fs.writeFileSync(path.join(LESSONS_DIR, topic.folder, topic.filename), content, "utf8");
-    foldersUpdated.add(topic.folder);
-    console.log(`    ✓ Saved`);
-  }
-
-  for (const folder of foldersUpdated) {
-    updateFolderReadme(folder);
-    console.log(`  ✓ Updated lessons/${folder}/README.md`);
-  }
-
+  // Step 5: log
   const today = new Date().toISOString().split("T")[0];
-  updatePlanFile(todayTopics, source, today);
-  console.log(`\n✅ Done — ${todayTopics.length} lessons published. Source: ${source}`);
+  updateLog(topic, source, today);
+
+  console.log(`\n✅ Done — 1 lesson published. Source: ${source}`);
 }
 
 main().catch(err => {
