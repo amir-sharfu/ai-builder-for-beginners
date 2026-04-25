@@ -1,0 +1,31 @@
+title: "[Show] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Built something using this course? Share it here — screenshots, links, code, anything.
+  - type: input
+    id: project
+    attributes:
+      label: What did you build?
+      placeholder: "e.g. A personal AI assistant, a recipe generator..."
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Tell us about it
+      placeholder: "What does it do? What was the hardest part? What are you proud of?"
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: Link (optional)
+      placeholder: "GitHub repo, live URL, screenshot..."
+  - type: input
+    id: lessons
+    attributes:
+      label: Which lessons helped most?
+      placeholder: "e.g. Lesson 26 (WebSocket), Lesson 51 (Prompts)"

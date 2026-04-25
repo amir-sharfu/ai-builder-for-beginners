@@ -14,7 +14,28 @@ You don't need a computer science degree. You need the right mental models — a
 
 ---
 
-## 📚 Course Modules
+## ⚡ Fast Track — Just want to build something?
+
+Skip to the 10 lessons that matter most. Read these, then jump straight to the project.
+
+| # | Lesson | Why it matters |
+|---|--------|----------------|
+| 01 | [What is the Internet?](lessons/01-web-fundamentals/01-what-is-the-internet.md) | Everything runs on this |
+| 06 | [What is HTML?](lessons/01-web-fundamentals/06-what-is-html.md) | What browsers actually render |
+| 08 | [What is JavaScript?](lessons/01-web-fundamentals/08-what-is-javascript.md) | What makes pages interactive |
+| 12 | [What is React?](lessons/01-web-fundamentals/12-what-is-react.md) | How modern UIs are built |
+| 16 | [What is a Backend?](lessons/02-backend-and-apis/16-what-is-backend.md) | The other half of your app |
+| 21 | [What is an API?](lessons/02-backend-and-apis/21-what-is-an-api.md) | How your app talks to Claude |
+| 26 | [What is HTTP vs WebSocket?](lessons/03-tools-and-protocols/26-what-is-http-vs-websocket.md) | Why chat apps work differently |
+| 35 | [What is a System Prompt?](lessons/03-tools-and-protocols/35-what-is-a-system-prompt.md) | How to give Claude a role |
+| 51 | [What is a Prompt?](lessons/04-building-with-ai/51-what-is-a-prompt.md) | How to talk to AI properly |
+| 61 | [Project Overview](lessons/04-building-with-ai/61-project-overview-simple-chatapp.md) | See everything come together |
+
+**[→ Then build the app](projects/01-simple-chatapp/)**
+
+---
+
+## 📚 Full Course Modules
 
 | Module | Topics | Lessons | Level |
 |--------|--------|---------|-------|
@@ -41,18 +62,36 @@ Each lesson shows its **read time** and **difficulty level** so you know what yo
 
 ---
 
-## The Project
+## 🛠️ Projects
 
-All lessons lead to one real project: a fully working AI chat app built with Claude Agent SDK.
+Real apps you can build by pasting one prompt into Claude Code.
 
-👉 [See the project](projects/01-simple-chatapp/)
+| # | Project | What you build | Concepts |
+|---|---------|----------------|----------|
+| [01](projects/01-simple-chatapp/) | Simple AI Chat App | A Claude.ai-style chat with multiple sessions and streaming | React, WebSocket, Node.js, Anthropic API |
+| [02](projects/02-ai-writing-assistant/) | AI Writing Assistant | Highlight any text, ask Claude to improve, shorten, or translate it | React, REST API, Claude API |
 
 ---
 
-## ❤️ Found a lesson helpful?
+## 💬 Community
 
-Every lesson has a reaction link at the bottom. Click it to leave a ❤️ on GitHub Discussions — it helps others know which lessons are most valuable.
+Got a question? Built something? Come talk about it.
+
+**[→ GitHub Discussions](https://github.com/amir-sharfu/ai-builder-for-beginners/discussions)**
+
+| Use this | For |
+|----------|-----|
+| [Q&A](https://github.com/amir-sharfu/ai-builder-for-beginners/discussions/categories/q-a) | Stuck on a lesson? Ask here |
+| [Show and tell](https://github.com/amir-sharfu/ai-builder-for-beginners/discussions/categories/show-and-tell) | Built something? Share it |
+| [Ideas](https://github.com/amir-sharfu/ai-builder-for-beginners/discussions/categories/ideas) | Suggest a new lesson topic |
+
+---
+
+## ✅ Track Your Progress
+
+Copy [PROGRESS.md](PROGRESS.md) into your own fork and tick off lessons as you go.
 
 ---
 
 *Built for non-coders, by someone who was once confused by all of this too.*
+*New lessons published automatically every day at 9:00 AM IST.*

@@ -8,7 +8,7 @@ A fully working AI chat application where you can have conversations with Claude
 ## Try It First
 Before reading the walkthroughs, open the app and explore it. Create a few chats. Ask Claude to search the web. Watch what happens when it uses tools.
 
-See the project files in: [`projects/01-simple-chatapp/`](../projects/01-simple-chatapp/)
+See the project files in: [`projects/01-simple-chatapp/`](../../projects/01-simple-chatapp/)
 
 ## The Architecture at a Glance
 

@@ -1,0 +1,24 @@
+title: "[Question] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ask anything about the course — no question is too basic.
+  - type: input
+    id: lesson
+    attributes:
+      label: Which lesson are you on? (optional)
+      placeholder: "e.g. Lesson 21 — What is an API?"
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      placeholder: "What are you trying to understand or build?"
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What have you tried so far? (optional)
+      placeholder: "What did you try? What happened?"
