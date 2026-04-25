@@ -101,9 +101,7 @@ Fork this repo and tick off lessons as you complete them.
 
 ## 🚀 New Daily Lessons — 76+
 
-*New lessons are added automatically every day across all folders — not just advanced topics.*
-*Each lesson goes into whichever section fits it best: web fundamentals, backend, tools, AI, or advanced.*
-*Check the individual folder READMEs or browse [lessons/](lessons/) to see what's been added.*
+*New lessons are updated every day across all folders.*
 
 ---
 
