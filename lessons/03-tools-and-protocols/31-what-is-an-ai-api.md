@@ -1,48 +1,42 @@
 # What is an AI API?
 
-> ⏱ 2 min read · 🟡 Intermediate
+> ⏱ 2 min read · 🟢 Beginner
 
 ## One Line Answer
-An AI API lets your app send text to an AI model and get intelligent responses back — without running the AI yourself.
+An AI API is a way for your website or app to send a question to an AI and get an answer back, without you building the AI yourself.
 
 ## Real World Analogy
-An AI API is like hiring a consultant who is an expert in everything. You write them a letter (API request), they think about it, and write back a response (API response). You don't need to know how they think or where they studied — you just send the question and receive the answer.
+Think of it like a drive-through window. You pull up, place your order, and food comes back out. You never see the kitchen. An AI API works the same way — you send a request, the AI does the work behind the scenes, and you get a result back.
 
 ## Live Example
-Open **https://console.anthropic.com** (create a free account if needed).
+Go to [chat.openai.com](https://chat.openai.com) and type a question. That chat box is talking to OpenAI's API behind the scenes. When developers build their *own* apps that use ChatGPT, they're connecting to that same API — just without the chat interface.
 
-The API Playground there lets you send messages to Claude and see the raw responses. What you're doing manually in the playground is exactly what our app does automatically — sending your messages as API requests and displaying the responses.
+## How It Shows Up in a Real App
+When a user clicks "Summarize this article," your code sends their text to the API and drops the reply onto the page:
 
-## How an AI API Call Works
-
+```js
+const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer YOUR_API_KEY",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    model: "gpt-4o",
+    messages: [{ role: "user", content: "Summarize this: " + articleText }]
+  })
+});
 ```
-Your App                        Anthropic's Servers
-   │                                    │
-   │── "What is React?" ──────────────> │
-   │   + API key (authentication)       │ (Claude thinks...)
-   │   + model name                     │
-   │   + any instructions               │
-   │                                    │
-   │<── "React is a JavaScript library  │
-   │     for building user interfaces…" │
-```
 
-## The Request Contains:
-- **Your message** — what you're asking
-- **API key** — proves you're authorised to use the service
-- **Model** — which AI to use (claude-opus-4-7, claude-sonnet-4-6, etc.)
-- **System prompt** — instructions that define how the AI should behave
-- **Max turns/tokens** — limits on how long it can respond
+The AI's reply comes back in the response, ready to display.
 
-## Cost
-AI APIs charge per use — usually per 1,000 tokens (roughly 750 words). A short conversation costs fractions of a cent. This is why the API key must stay secret — anyone with your key can run up charges on your account.
-
-## How It Shows Up in Our App
-`server/ai-client.ts` uses the Claude Agent SDK which internally calls `api.anthropic.com`. The SDK handles all the HTTP requests, authentication, and response parsing.
+## What Breaks Without It
+Without an API connection, your app has no way to reach the AI — clicking your "Summarize" button would do nothing. Every AI-powered feature in your app depends on this link staying set up correctly.
 
 ## What to Tell AI When You Need It
-> "Use the Anthropic Claude API via the Agent SDK. Load the API key from an environment variable. Use the claude-sonnet-4-6 model. Stream the responses."
+> "Show me the simplest possible way to call the OpenAI API in JavaScript and display the response on a webpage. I'm a beginner."
 
+> "My API call isn't returning anything. Here's my code: [paste code]. What's wrong and how do I fix it?"
 ---
 
 ← [What Broke When WebSocket Disconnected](./30-what-broke-when-websocket-disconnected.md) · [What is Anthropic and Claude?](./32-what-is-anthropic-claude.md) →

@@ -1,8 +1,6 @@
 # 🌐 Web Fundamentals
 
-> 15 lessons · ~30 min total · 🟢 Beginner
-
-How the internet works — from the ground up. Start here if you're brand new.
+> 16 lessons · ~32 min total · 🟢 Beginner
 
 ---
 
@@ -25,6 +23,7 @@ How the internet works — from the ground up. Start here if you're brand new.
 | 13 | [What is Vite?](./13-what-is-vite.md) | 2 min |
 | 14 | [What is Tailwind CSS?](./14-what-is-tailwind.md) | 2 min |
 | 15 | [Why Do We Use Frameworks?](./15-why-we-use-frameworks.md) | 2 min |
+| 81 | [What is Angular?](./81-angular.md) | 2 min |
 
 ---
 
