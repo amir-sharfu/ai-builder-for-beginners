@@ -1,84 +1,52 @@
 # Common Beginner Mistakes
 
-> ⏱ 3 min read · 🟡 Intermediate
+> ⏱ 2 min read · 🟡 Intermediate
 
 ## One Line Answer
-Most beginner mistakes are not about code — they're about setup, secrets, and assumptions that nobody told you about.
+New developers often break their apps by ignoring error messages, hardcoding sensitive values, or assuming the wrong port is running their server.
 
----
+## Real World Analogy
+It's like moving into a new apartment and assuming the light switches work the same as your old place — small wrong assumptions cause real problems until you stop and read the manual.
 
-## Mistake 1: Forgetting to Run `npm install`
-**What happens:** You get "Cannot find module" errors.
-**Why:** The packages in `package.json` haven't been downloaded yet.
-**Fix:** Run `npm install` whenever you clone a project or add new packages.
+## Live Example
+Open any project on **Replit** (replit.com) and start a Node server without specifying a port. Replit assigns its own port automatically — if you hardcode `3000`, your app won't load. The error message tells you exactly what's wrong, but beginners often skip reading it.
 
----
+## How It Shows Up in a Real App
 
-## Mistake 2: Hardcoding Ports in Frontend Code
-**What happened to us:** `ws://localhost:3001/ws` worked locally but broke in Codespaces.
-**Why:** Different environments have different network rules.
-**Fix:** Always use relative URLs (`/api/chats`) or the current `window.location.host`. Let Vite's proxy handle routing.
+Three mistakes appear constantly in beginner projects:
 
----
+**1. Hardcoding ports**
+```js
+// ❌ Breaks on most hosting platforms
+const PORT = 3000;
 
-## Mistake 3: Committing the .env File
-**What happens:** Your API key becomes public on GitHub. Bots find it within minutes.
-**Why:** Developers forget to add `.env` to `.gitignore`.
-**Fix:** Check `.gitignore` before your first `git push`. Never commit secrets.
+// ✅ Works anywhere
+const PORT = process.env.PORT || 3000;
+```
 
----
+**2. Skipping error messages**
+```js
+// ❌ Beginner habit — ignoring the red text in the terminal
+// ✅ Read the first line of the error, Google it exactly as written
+```
 
-## Mistake 4: Not Stopping Old Processes
-**What happened to us:** Port 3001 was occupied by a previous server instance.
-**Why:** Running `npm run dev` twice without stopping the first.
-**Fix:** Always `Ctrl+C` to stop a running process before restarting. Check with `lsof -ti:3001`.
+**3. Committing API keys to GitHub**
+```js
+// ❌ Anyone can steal this
+const key = "sk-abc123realkey";
 
----
+// ✅ Store it in a .env file, never push that file
+const key = process.env.API_KEY;
+```
 
-## Mistake 5: Editing `node_modules` Files
-**What happens:** Your change is overwritten next time you run `npm install`.
-**Why:** `node_modules` is auto-generated. It's not your code.
-**Fix:** Never edit files inside `node_modules`. Edit your own code or the package's config instead.
+## What Breaks Without It
+Hardcoded ports cause apps to fail silently on platforms like Render or Railway. Exposed API keys can rack up charges on your account within hours of being pushed to a public repo.
 
----
+## What to Tell AI When You Need It
 
-## Mistake 6: Using Vague Prompts with AI
-**What happens:** AI builds something completely different from what you imagined.
-**Why:** AI can't read your mind — it interprets vague requests broadly.
-**Fix:** Describe the user experience, the data flow, and the specific technology. See Week 3 lessons for prompt templates.
+> "My Node server works locally on port 3000 but won't start when I deploy to Render. Here's my server file: [paste code]. What's wrong?"
 
----
-
-## Mistake 7: Not Reading the Error Message
-**What happens:** You spend 20 minutes confused when the answer was in the terminal.
-**Why:** Error messages look scary at first.
-**Fix:** Read the first line. Find your filename. Go to that line. Paste the full error into AI if you're still stuck.
-
----
-
-## Mistake 8: Assuming the Frontend Can Store Secrets
-**What happens:** Your API key is visible to anyone who opens DevTools.
-**Why:** Browser code is fully readable by users — there are no secrets in the frontend.
-**Fix:** All API keys, passwords, and secrets live on the backend. Always.
-
----
-
-## Mistake 9: Skipping the README
-**What happens:** Hours of confusion that the README would have prevented.
-**Why:** Beginners often go straight to the code.
-**Fix:** README first. Always. It tells you how to set up, what to install, and how to run.
-
----
-
-## Mistake 10: Trying to Understand Everything at Once
-**What happens:** Overwhelm. Nothing gets built.
-**Why:** Modern web apps have many layers. Understanding all of them simultaneously is impossible.
-**Fix:** Follow the 3-week plan. Understand concepts progressively. Build first, understand as you go.
-
----
-
-**Week 2 Complete.** You now understand all the tools. Week 3 is about building confidently with AI.
-
+> "I accidentally pushed my API key to GitHub. What do I do right now to secure it, and how do I use environment variables instead?"
 ---
 
 ← [What is a Dependency?](./49-what-is-a-dependency.md) · [What is a Prompt?](../04-building-with-ai/51-what-is-a-prompt.md) →
