@@ -3,52 +3,34 @@
 > ⏱ 2 min read · 🟢 Beginner
 
 ## One Line Answer
-An API is a way for one piece of software to talk to another — it's the messenger that takes requests and brings back responses.
+An API is a way for two apps to talk to each other and share information.
 
 ## Real World Analogy
-An API is like a waiter in a restaurant. You (the app) don't go into the kitchen (the other system) directly. You tell the waiter (API) what you want, they go to the kitchen, and bring back what you ordered. You never need to know how the kitchen works.
+Think of an API like a waiter at a restaurant — you tell the waiter what you want, they go to the kitchen and get it, then bring it back to you. You never have to go into the kitchen yourself.
 
 ## Live Example
-Open **https://wttr.in/London?format=3** in your browser.
+Go to [openweathermap.org](https://openweathermap.org). Any weather app you've used — on your phone or a website — is pulling its data from an API exactly like this one. The app doesn't store the weather itself; it asks the API, gets the answer, and shows it to you.
 
-You just called a weather API. Your browser sent a request to `wttr.in`, a weather service, and it returned the current weather for London. Any app in the world can use that same URL to get weather data — that's an API.
+## How It Shows Up in a Real App
+When a user clicks "Get Weather," your code sends a request to the API and gets back data:
 
-## Types of APIs
-
-| Type | Example | What It Does |
-|------|---------|-------------|
-| Weather API | wttr.in, OpenWeather | Returns weather data |
-| Maps API | Google Maps | Shows maps, calculates routes |
-| Payment API | Stripe | Processes credit card payments |
-| AI API | Anthropic Claude | Generates AI responses |
-| Our own API | `/api/chats` | Manages our app's chat data |
-
-## What an API Request Looks Like
-```
-Request:  GET https://api.example.com/weather?city=London
-Response: { "city": "London", "temp": 18, "condition": "Cloudy" }
+```js
+fetch("https://api.openweathermap.org/data/2.5/weather?q=London&appid=YOUR_KEY")
+  .then(response => response.json())
+  .then(data => {
+    console.log(data.weather[0].description); // e.g. "light rain"
+  });
 ```
 
-## How It Shows Up in Our App
-
-Our app uses two types of APIs:
-
-**1. Our own API** (built with Express):
-```
-GET /api/chats          → returns list of chats
-POST /api/chats         → creates a new chat
-DELETE /api/chats/:id   → deletes a chat
-```
-
-**2. Anthropic's API** (called by the Agent SDK):
-The backend sends your messages to `api.anthropic.com` and gets Claude's responses back. Your API key (`ANTHROPIC_API_KEY`) is the password that lets us use this service.
+Your app sends a request with a location, and the API responds with weather data in JSON format — a structured list of information your code can read and display.
 
 ## What Breaks Without It
-No API = no communication between parts. The frontend can't get data. The backend can't reach Claude. The whole app stops working.
+Without an API, your app would have no way to access outside data — no weather, no maps, no login with Google, no payments. You'd have to build and maintain all of that yourself, which is rarely practical.
 
 ## What to Tell AI When You Need It
-> "Create a REST API with Express. I need endpoints to list, create, and delete chats. Each should return JSON. Also integrate the Anthropic API using my API key from the .env file."
+> "Show me how to fetch data from a public API in JavaScript and display the result on the page."
 
+> "I'm getting a CORS error when calling an API from my frontend — what's causing it and how do I fix it?"
 ---
 
 ← [What is Localhost?](./20-what-is-localhost.md) · [What is JSON?](./22-what-is-json.md) →

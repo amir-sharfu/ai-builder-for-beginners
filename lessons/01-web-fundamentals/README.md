@@ -1,6 +1,6 @@
 # 🌐 Web Fundamentals
 
-> 17 lessons · ~34 min total · 🟢 Beginner
+> 18 lessons · ~36 min total · 🟢 Beginner
 
 ---
 
@@ -25,6 +25,7 @@
 | 15 | [Why Do We Use Frameworks?](./15-why-we-use-frameworks.md) | 2 min |
 | 81 | [What is Angular?](./81-angular.md) | 2 min |
 | 82 | [What is Vue.js?](./82-what-is-vue.md) | 2 min |
+| 83 | [What is Svelte?](./83-svelte.md) | 2 min |
 
 ---
 
