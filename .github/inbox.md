@@ -5,7 +5,6 @@ The daily action reads this file first and removes each item after publishing.
 
 ---
 
-- SolidJS
 - Next.js
 - Nuxt.js
 - SvelteKit

@@ -1,6 +1,6 @@
 # 🌐 Web Fundamentals
 
-> 18 lessons · ~36 min total · 🟢 Beginner
+> 19 lessons · ~38 min total · 🟢 Beginner
 
 ---
 
@@ -26,6 +26,7 @@
 | 81 | [What is Angular?](./81-angular.md) | 2 min |
 | 82 | [What is Vue.js?](./82-what-is-vue.md) | 2 min |
 | 83 | [What is Svelte?](./83-svelte.md) | 2 min |
+| 84 | [What is SolidJS?](./84-solidjs.md) | 2 min |
 
 ---
 
