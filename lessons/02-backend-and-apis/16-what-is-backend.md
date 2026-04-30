@@ -3,48 +3,38 @@
 > ⏱ 2 min read · 🟢 Beginner
 
 ## One Line Answer
-The backend is the part of the app the user never sees — it runs on a server, handles logic, talks to databases, and calls external APIs.
+The backend is the part of a website that runs on a server — it stores data, handles logins, and sends information to what users see on screen.
 
 ## Real World Analogy
-A restaurant has a dining area (frontend) and a kitchen (backend). Customers see the dining area, place orders, and receive food. But all the real work — cooking, storing ingredients, managing recipes — happens in the kitchen. Customers never go there.
+A restaurant kitchen is the backend. Customers never see it, but it's where all the real work happens — storing ingredients, preparing food, and sending it out to the table.
 
 ## Live Example
-Go to **https://www.instagram.com** and log in.
+Go to **reddit.com** and scroll your feed. Every post, username, and vote count was fetched from Reddit's backend the moment the page loaded. None of that lives in your browser — it's pulled from a database on a server.
 
-When you tap the heart on a photo:
-1. The **frontend** (what you see) instantly turns the heart red
-2. The **backend** records your like in a database
-3. The backend sends a notification to the photo owner
-4. The backend updates the like count
+## How It Shows Up in a Real App
+When a user logs in, the backend checks their credentials and responds:
 
-You only see step 1. Steps 2–4 are entirely backend.
+```js
+// Backend receives login request and replies
+app.post('/login', (req, res) => {
+  const user = findUser(req.body.email);
+  if (user && passwordMatches(req.body.password)) {
+    res.send({ success: true, token: generateToken(user) });
+  } else {
+    res.send({ success: false, message: 'Invalid credentials' });
+  }
+});
+```
 
-## What Lives in the Backend
-
-| Responsibility | Example in Our App |
-|---------------|-------------------|
-| Receiving requests | Express routes (`/api/chats`) |
-| Business logic | Creating, deleting, managing chats |
-| Calling external APIs | Sending messages to Claude AI |
-| Managing connections | WebSocket sessions |
-| Data storage | In-memory ChatStore |
-
-## What the Backend Keeps Secret
-- **API keys** — our `ANTHROPIC_API_KEY` never leaves the server
-- **Business rules** — logic the user shouldn't be able to bypass
-- **Database credentials** — connection details to data stores
-
-This is why we never put API keys in frontend code — the browser is public and anyone could read it.
-
-## How It Shows Up in Our App
-Our backend is `server/server.ts` — an Express + WebSocket server running on `localhost:3001`. It receives messages from the browser, passes them to the Claude Agent SDK, and streams responses back.
+The frontend never handles this logic — it just sends the request and waits for an answer.
 
 ## What Breaks Without It
-The frontend becomes a pretty but useless interface. No AI responses, no chat history, no data saved anywhere.
+Without a backend, your app can't save data, verify users, or talk to a database. Every user would see the same static page with no personalisation, no accounts, and no memory of previous visits.
 
 ## What to Tell AI When You Need It
-> "Build a Node.js backend with Express. It should handle REST API routes for managing chats and use WebSocket for real-time communication. Keep the API key on the server side only."
+> "I'm building a beginner web app with a login page. Help me set up a simple backend using Node.js and Express that checks a username and password."
 
+> "Explain what a backend does in a simple web app and show me a basic example with one route that returns some data."
 ---
 
 ← [Why Do We Use Frameworks?](../01-web-fundamentals/15-why-we-use-frameworks.md) · [What is Node.js?](./17-what-is-nodejs.md) →
