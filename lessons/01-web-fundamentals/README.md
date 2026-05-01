@@ -1,6 +1,6 @@
 # 🌐 Web Fundamentals
 
-> 20 lessons · ~40 min total · 🟢 Beginner
+> 21 lessons · ~42 min total · 🟢 Beginner
 
 ---
 
@@ -28,6 +28,7 @@
 | 83 | [What is Svelte?](./83-svelte.md) | 2 min |
 | 84 | [What is SolidJS?](./84-solidjs.md) | 2 min |
 | 85 | [What is Next.js?](./85-nextjs.md) | 2 min |
+| 86 | [What is Nuxt.js?](./86-nuxtjs.md) | 2 min |
 
 ---
 

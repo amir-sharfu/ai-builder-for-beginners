@@ -1,88 +1,34 @@
 # How to Deploy Your App
 
-> ⏱ 3 min read · 🟡 Intermediate
+> ⏱ 2 min read · 🟢 Beginner
 
 ## One Line Answer
-Deployment means putting your app on a real server so anyone on the internet can use it — not just you on localhost.
+Deploying means putting your app on the internet so other people can actually visit and use it.
 
-## The Deployment Landscape
+## Real World Analogy
+Building an app on your computer is like cooking a meal in your kitchen — only you can eat it. Deploying is like opening a restaurant: now anyone can walk in and enjoy it.
 
-| Platform | Best For | Free Tier | Complexity |
-|----------|---------|-----------|-----------|
-| **Railway** | Full-stack apps (frontend + backend together) | Yes | Low |
-| **Render** | Backend services + databases | Yes | Low |
-| **Vercel** | Frontend only (React, Next.js) | Yes | Very Low |
-| **Fly.io** | Containers, full control | Yes | Medium |
-| **DigitalOcean** | Full control, more power | No | High |
+## Live Example
+Visit [netlify.com](https://netlify.com) and look at the "Sites" section after signing up. Every site listed there is a project someone built locally and then deployed — Netlify gave it a public URL so the world could reach it.
 
-**For our app (React frontend + Node.js backend): Railway or Render.**
-
-## What Changes When You Deploy
-
-| Development | Production |
-|-------------|-----------|
-| `http://localhost:5174` | `https://your-app.railway.app` |
-| Vite dev server | Built static files served by Express |
-| `.env` file | Environment variables set in dashboard |
-| `npm run dev` | `npm run build` + `npm start` |
-| Any errors are yours alone | Errors affect real users |
-
-## Deploying to Railway (Simplest Option)
-
-### Step 1: Build the frontend
-Vite compiles the React app into plain HTML/CSS/JS files:
-```bash
-npm run build
-# Creates /dist folder with compiled frontend
-```
-
-### Step 2: Serve the built frontend from Express
-Add this to `server.ts`:
-```typescript
-// Serve built frontend files
-app.use(express.static(path.join(__dirname, "../dist")));
-// For any unmatched route, serve the React app
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../dist/index.html"));
-});
-```
-
-### Step 3: Deploy
-```
-1. Push code to GitHub
-2. Go to railway.app → New Project → Deploy from GitHub
-3. Select your repo
-4. Add environment variable: ANTHROPIC_API_KEY = your key
-5. Railway builds and deploys automatically
-```
-
-## The Prompt to Get AI to Help Deploy
+## How It Shows Up in a Real App
+When you're ready to deploy, most platforms just need you to connect your project. With Netlify, you can drag and drop your project folder straight into the browser:
 
 ```
-I want to deploy this app to Railway.
-
-Current setup:
-- Frontend: React + Vite (builds to /dist)
-- Backend: Node.js + Express on port 3001
-- WebSocket on the same server
-
-Please:
-1. Update server.ts to serve the built frontend
-2. Add a start script to package.json for production
-3. Give me the exact steps to deploy to Railway
-4. Tell me which environment variables to set in the dashboard
+1. Go to netlify.com and sign in
+2. Drag your project folder onto the Netlify dashboard
+3. Netlify gives you a live URL — share it with anyone
 ```
 
-## Critical: Environment Variables
+That's it. No server setup, no configuration files needed to get started.
 
-Never hardcode secrets in production. Set them in the platform's dashboard:
-- `ANTHROPIC_API_KEY` — your Claude API key
-- `NODE_ENV=production`
-- `PORT` — usually set automatically by the platform
+## What Breaks Without It
+If you never deploy, your app only works on your own computer — nobody else can see or use it. All the work you put in stays invisible to the world.
 
 ## What to Tell AI When You Need It
-> "Help me prepare this app for deployment. Tell me what needs to change between development and production, then give me step-by-step deployment instructions for Railway."
+> "I built a simple HTML, CSS, and JavaScript project on my computer. Walk me through deploying it for free so I can share a link with someone."
 
+> "My deployed site isn't loading. Here's the error I'm seeing: [paste error]. What's likely causing this and how do I fix it?"
 ---
 
 ← [How to Add a Database](./69-how-to-add-a-database.md) · [Glossary — Plain English Definitions](./71-glossary.md) →
